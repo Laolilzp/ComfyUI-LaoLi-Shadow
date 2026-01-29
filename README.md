@@ -77,34 +77,6 @@ ComfyUI-LaoLi-Shadow 是一个专为 ComfyUI 设计的底层性能优化插件�
 
 ---
 
-## 🔗 连接示例 (Wiring Guide)
-
-### 场景 A：常规绘图防爆显存
-最简单的用法，防止 Flux 或 Qwen 爆显存。
-
-```mermaid
-[Load Checkpoint] ===> [🚀 老李_排队] ===> [KSampler]
-                           ^
-                    (设置阈值 0.85)
-```
-
-### 场景 B：VLM 反推 + ControlNet (极致显存优化)
-确保 VLM 跑完并释放显存后，才加载 ControlNet。
-
-```mermaid
-[Load Image] ---------------------+
-      |                           |
-      v                           v
-[VLM 节点] ===(输出提示词String)==> [🚧 老李_逻辑门 (wait_for)]
-                                          ^
-[Load ControlNet] ==(模型Model)==> [🚧 老李_逻辑门 (input_data)] 
-                                          |
-                                          v
-                                  [ControlNet Apply]
-```
-
----
-
 ## 📥 安装 (Installation)
 
 1.  进入 ComfyUI 的 `custom_nodes` 目录。
