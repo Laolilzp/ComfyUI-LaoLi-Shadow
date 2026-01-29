@@ -10,7 +10,8 @@ ComfyUI-LaoLi-Shadow 是一个专为 ComfyUI 设计的底层性能优化插件�
 - **通用模型支持**：内置全局算法 (Dominant Layer Search)，完美支持 SD1.5/SDXL/Flux/WanVideo/Qwen 以及各种复杂的 Wrapper 封装模型。
 
 ---
-<img width="3378" height="1469" alt="image" src="https://github.com/user-attachments/assets/4dba4a05-0e80-42df-b663-3f078cdc3bc5" />
+<img width="3373" height="1420" alt="image" src="https://github.com/user-attachments/assets/c0e95dae-5dfc-47d3-9563-d5e875b7a69c" />
+
 
 
 ## 🛠️ 节点说明 (Nodes)
