@@ -11,7 +11,8 @@ ComfyUI-LaoLi-Shadow 是一个专为 ComfyUI 设计的底层性能优化插件�
 
 ---
 ## 🔗 连接图示
-<img width="3373" height="1420" alt="image" src="https://github.com/user-attachments/assets/c0e95dae-5dfc-47d3-9563-d5e875b7a69c" />
+<img width="1406" height="570" alt="image" src="https://github.com/user-attachments/assets/7c3ce0bc-8dd3-4553-a61d-7b9ec90be4a6" />
+
 
 
 
@@ -33,6 +34,8 @@ ComfyUI-LaoLi-Shadow 是一个专为 ComfyUI 设计的底层性能优化插件�
         *   `Monitor Mode` (监控模式): 仅监控显存，不主动执行卸载策略（适合 24G+ 大显存用户）。
     *   `ram_reserve_gb` (内存保留): **防卡死安全气囊**。
         *   当系统物理内存（RAM）剩余量低于此数值（例如 4.0GB）时，强制触发垃圾回收（GC），防止电脑因内存耗尽而死机。
+    *   `vram_reserve_mb` (显存保留): 强制划拨给 Windows 系统、浏览器或视频播放器的“专用显存”，严禁 ComfyUI 占用。让你在跑图的时候，还能流畅地看 B 站、刷网页或用 PS 修图。
+        *   512：保证电脑不卡死，鼠标能动。1024默认。2048：如果你喜欢边跑图边看高清视频，或者显存很大（24G），建议设高一点，体验更流畅。
     *   `verbose` (日志): 是否在控制台打印详细的运行日志（建议开启）。
 
 ---
