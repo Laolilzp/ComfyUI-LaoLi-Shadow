@@ -10,15 +10,16 @@ ComfyUI-LaoLi-Shadow 是一个专为 ComfyUI 设计的底层性能优化插件�
 - **通用模型支持**：内置全局算法 (Dominant Layer Search)，完美支持 SD1.5/SDXL/Flux/WanVideo/Qwen 以及各种复杂的 Wrapper 封装模型。
 
 ---
+## 🔗 连接图示
 <img width="3373" height="1420" alt="image" src="https://github.com/user-attachments/assets/c0e95dae-5dfc-47d3-9563-d5e875b7a69c" />
 
 
 
-## 🛠️ 节点说明 (Nodes)
+## 🛠️ 节点说明
 
 插件包含三个核心节点，分别负责**全局控制**、**推理优化**和**流程控制**。
 
-### 1. 👻 老李_影子 (Shadow)
+### 1. 👻 影子 (Shadow)
 **【全局控制器】**
 无需连接任何连线，只需添加到工作流中即可生效。它接管了 ComfyUI 的底层模型加载逻辑。
 
@@ -36,7 +37,7 @@ ComfyUI-LaoLi-Shadow 是一个专为 ComfyUI 设计的底层性能优化插件�
 
 ---
 
-### 2. 🚀 老李_排队 (Lineup VRAM)
+### 2. 🚀 排队 (Lineup VRAM)
 **【推理显存保姆】**
 这是 V15 版本最强大的节点。它利用“全局算法”深入扫描模型内部，在每一层计算前检查显存。
 
@@ -62,7 +63,7 @@ ComfyUI-LaoLi-Shadow 是一个专为 ComfyUI 设计的底层性能优化插件�
 
 ---
 
-### 3. 🚧 老李_逻辑门 (Flow Gate)
+### 3. 🚧 逻辑门 (Flow Gate)
 **【流程红绿灯】**
 强制控制 ComfyUI 的执行顺序，解决并行任务导致的资源冲突。
 
