@@ -32,7 +32,8 @@ class Shadow_Config:
     enabled = True
     mode = "Ease Mode" 
     shadow_mode = True 
-    ram_reserve_gb = 4.0
+    ram_reserve_gb = 4.0  # 内存保留默认值
+    vram_reserve_mb = 1024.0  # 显存保留默认值
     verbose = True
     vram_cushion_gb = 1.0 
 
@@ -223,42 +224,60 @@ def _hacked_load_controlnet(ckpt_path):
 comfy.controlnet.load_controlnet = _hacked_load_controlnet
 
 # ==========================================================
-# 4. 显存管理与触发器
+# 4. 显存管理与触发器 (Safe VRAM Check)
 # ==========================================================
 if not hasattr(mm, "_laoli_original_load_models_gpu"):
     mm._laoli_original_load_models_gpu = mm.load_models_gpu
+
 def _shadow_load_models_gpu(models, memory_required=0, **kwargs):
     if Shadow_Config.enabled:
         try:
             device = mm.get_torch_device()
+            # 1. 唤醒影子
             for model in models:
                 if getattr(model, "_laoli_is_shadow", False):
                     if hasattr(model, "summon"): model.summon() 
                     if hasattr(model, "_ensure_real"): model._ensure_real()
+            
+            # 2. Ease Mode 显存预检查
             if Shadow_Config.mode == "Ease Mode":
                 all_loaded = True
                 for model in models:
                     if hasattr(model, "current_device"):
                         if model.current_device != device: all_loaded = False; break
                     else: all_loaded = False; break
-                if not all_loaded:
-                    if device.type == 'cuda':
+                
+                if not all_loaded and device.type == 'cuda':
+                    try:
+                        free_mem, total_mem = torch.cuda.mem_get_info(device)
+                    except:
                         stats = torch.cuda.get_device_properties(device)
-                        free = stats.total_memory - torch.cuda.memory_reserved(device)
-                        needed = memory_required if memory_required > 0 else (1.0 * 1024**3)
-                        cushion = Shadow_Config.vram_cushion_gb * 1024**3
-                        if free < (needed + cushion):
-                            if Shadow_Config.verbose: print(f"🧹 [LaoLi Shadow] 显存不足 (余{free/1024**3:.1f}G) -> 清理")
-                            mm.unload_all_models()
-                            mm.soft_empty_cache()
-                            if device.type == 'cuda': torch.cuda.empty_cache()
+                        free_mem = stats.total_memory - torch.cuda.memory_reserved(device)
+                    
+                    needed = memory_required if memory_required > 0 else (1.0 * 1024**3)
+                    
+                    # 使用 Shadow 节点的全局预留设置
+                    reserve_bytes = Shadow_Config.vram_reserve_mb * 1024 * 1024
+                    cushion_bytes = Shadow_Config.vram_cushion_gb * 1024**3
+                    safe_cushion = max(cushion_bytes, reserve_bytes)
+
+                    if free_mem < (needed + safe_cushion):
+                        if Shadow_Config.verbose: 
+                            print(f"🧹 [LaoLi Shadow] 显存不足 (真实剩余{free_mem/1024**3:.1f}G | 需保留{Shadow_Config.vram_reserve_mb}MB) -> 强制清理")
+                        mm.unload_all_models()
+                        mm.soft_empty_cache()
+                        if device.type == 'cuda': torch.cuda.empty_cache()
+
+            # 3. 内存(RAM) 检查
             if psutil:
                 mem = psutil.virtual_memory()
                 available_gb = mem.available / (1024**3)
                 if available_gb < Shadow_Config.ram_reserve_gb:
-                     if Shadow_Config.verbose: print(f"⚠️ [LaoLi Shadow] 剩余内存过低 -> GC")
+                     if Shadow_Config.verbose: print(f"⚠️ [LaoLi Shadow] 系统内存不足 -> 触发GC")
                      gc.collect()
+
         except Exception as e: print(f"❌ [LaoLi Shadow Error] {e}")
+    
     return mm._laoli_original_load_models_gpu(models, memory_required=memory_required, **kwargs)
 mm.load_models_gpu = _shadow_load_models_gpu
 
@@ -275,21 +294,24 @@ class LaoLi_Shadow_Node:
                 "shadow_mode": ("BOOLEAN", {"default": True}),
                 "mode": (["Ease Mode", "Monitor Mode"],),
                 "ram_reserve_gb": ("FLOAT", {"default": 4.0, "min": 0.5, "max": 64.0, "step": 0.5}),
+                "vram_reserve_mb": ("FLOAT", {"default": 512.0, "min": 0.0, "max": 8192.0, "step": 64.0, "tooltip": "为系统预留的显存(MB)，防止卡死"}),
                 "verbose": ("BOOLEAN", {"default": True}),
             }
         }
     RETURN_TYPES = ()
     FUNCTION = "update_settings"
     CATEGORY = "LaoLi Shadow"
-    DESCRIPTION = "👻 老李_影子 (Shadow)  "
-    def update_settings(self, enable, shadow_mode, mode, ram_reserve_gb, verbose):
+    DESCRIPTION = "👻 老李_影子 (Shadow) : 全局控制与资源管理"
+    
+    def update_settings(self, enable, shadow_mode, mode, ram_reserve_gb, vram_reserve_mb, verbose):
         Shadow_Config.enabled = enable
         Shadow_Config.shadow_mode = shadow_mode
         Shadow_Config.mode = mode
         Shadow_Config.ram_reserve_gb = float(ram_reserve_gb)
+        Shadow_Config.vram_reserve_mb = float(vram_reserve_mb)
         Shadow_Config.verbose = verbose
         status = "✅ 开启" if enable else "⏸️ 暂停"
-        print(f"\n👻 [LaoLi Shadow] {status} | 模式: {shadow_mode} | 内存保留: {ram_reserve_gb}GB")
+        print(f"\n👻 [LaoLi Shadow] {status} | 模式: {mode} | VRAM预留: {vram_reserve_mb}MB")
         return ()
 
 class LaoLi_Flow_Gate:
@@ -320,42 +342,47 @@ class LaoLi_Lineup_Node:
     RETURN_NAMES = ("optimized_model",)
     FUNCTION = "apply_lineup"
     CATEGORY = "LaoLi Shadow" 
-    DESCRIPTION = "老李 Lineup : 影子穿透+全局算法。"
+    DESCRIPTION = "老李 Lineup : 显存排队与深度优化"
 
     def apply_lineup(self, model, vram_threshold, cleaning_interval, strict_mode):
         target_model_wrapper = model
         try:
-            # 1. 如果是影子，必须强制现身，否则扫描不到任何层
+            # 1. 影子处理
             if getattr(model, "_laoli_is_shadow", False):
-                if Shadow_Config.verbose: print(f"⚡ [LaoLi Lineup] 检测到影子，正在强制加载真身以进行优化...")
-                model._ensure_real() # 强制读盘
-                target_model_wrapper = model._laoli_real_obj # 拿到真身(ModelPatcher)
+                if Shadow_Config.verbose: print(f"⚡ [LaoLi Lineup] 检测到影子，强制加载真身...")
+                model._ensure_real()
+                target_model_wrapper = model._laoli_real_obj
             elif hasattr(model, "clone"):
                 try: target_model_wrapper = model.clone()
                 except: target_model_wrapper = model
             
-            # 2. 准备钩子
+            # 2. 显存计算 (双重限制)
             device = mm.get_torch_device()
             total_vram = 0
             if device.type == 'cuda':
                 total_vram = torch.cuda.get_device_properties(device).total_memory
             
+            reserve_bytes = Shadow_Config.vram_reserve_mb * 1024 * 1024
+            limit_by_ratio = total_vram * vram_threshold
+            limit_by_reserve = total_vram - reserve_bytes
+            effective_limit_bytes = min(limit_by_ratio, limit_by_reserve)
+            
+            if Shadow_Config.verbose and total_vram > 0:
+                print(f"🛡️ [LaoLi Lineup] 显存安全线: {effective_limit_bytes/1024**3:.2f} GB (全局预留: {Shadow_Config.vram_reserve_mb}MB)")
+
             def smart_hook(module, input):
                 if total_vram == 0: return None
                 current_reserved = torch.cuda.memory_reserved(device)
-                usage_ratio = current_reserved / total_vram
-                if usage_ratio >= vram_threshold:
+                if current_reserved >= effective_limit_bytes:
                     if strict_mode: torch.cuda.synchronize() 
                     mm.soft_empty_cache()       
                 return None
 
-            # 3. 全局算法 (扫描真身)
+            # 3. 搜索核心层 (优化版)
             best_container = self._find_dominant_layer_container(target_model_wrapper)
 
             if best_container is None:
-                if Shadow_Config.verbose: 
-                    print(f"⚠️ [LaoLi Lineup] 扫描失败: {type(target_model_wrapper).__name__} 内部没有发现任何层列表。")
-                # 即使失败也返回真身(或克隆体)，不要返回影子，否则采样器可能不认
+                if Shadow_Config.verbose: print(f"⚠️ [LaoLi Lineup] 扫描完成，未发现可用的层结构 (可能模型已被高度封装)")
                 return (target_model_wrapper,)
 
             blocks = list(best_container)
@@ -365,10 +392,10 @@ class LaoLi_Lineup_Node:
                 if i % cleaning_interval == 0:
                     block.register_forward_pre_hook(smart_hook)
                     mounted_count += 1
-
-            if Shadow_Config.verbose:
-                print(f"🚀 [LaoLi Lineup] 注入成功 | 目标: {len(blocks)}层结构 | 挂载: {mounted_count}层 | 阈值: {int(vram_threshold*100)}%")
             
+            if Shadow_Config.verbose:
+                 print(f"🚀 [LaoLi Lineup] 注入成功 | 发现: {len(blocks)}层 | 挂载: {mounted_count}个钩子")
+
             return (target_model_wrapper,)
 
         except Exception as e:
@@ -376,30 +403,35 @@ class LaoLi_Lineup_Node:
             return (model,)
 
     def _find_dominant_layer_container(self, root_obj):
+        # 主动剥洋葱逻辑：专门处理 ComfyUI 的 ModelPatcher 和 SD/Flux 结构
+        real_model = root_obj
+        
+        # 1. 剥离 ModelPatcher
+        if hasattr(real_model, "model"): 
+            real_model = real_model.model
+            
+        # 2. 剥离 ComfyUI 的 BaseModel 包装 (针对 SD/Flux)
+        # 大多数模型的真正层结构在 diffusion_model 属性下
+        if hasattr(real_model, "diffusion_model"):
+            real_model = real_model.diffusion_model
+            
         best_container = None
         max_len = 0
         
-        # 定义搜索生成器，自动处理 ModelPatcher 和 Module
-        def iter_modules(obj):
-            if isinstance(obj, ModelPatcher):
-                # 确保这里拿到的是真的 model
-                yield from obj.model.named_modules()
-            elif isinstance(obj, torch.nn.Module):
-                yield from obj.named_modules()
-            else:
-                # 鸭子类型尝试
-                if hasattr(obj, "model") and isinstance(obj.model, torch.nn.Module):
-                    yield from obj.model.named_modules()
-
-        for name, module in iter_modules(root_obj):
-            if isinstance(module, (nn.ModuleList, nn.Sequential)):
-                curr_len = len(module)
-                # Qwen/Wan 的层数通常 > 4
-                if curr_len > 4: 
-                    if curr_len > max_len:
-                        max_len = curr_len
-                        best_container = module
-        
+        # 3. 直接在剥离后的模型中搜索
+        try:
+            # 使用 named_modules 搜索所有子模块
+            for name, module in real_model.named_modules():
+                if isinstance(module, (nn.ModuleList, nn.Sequential)):
+                    curr_len = len(module)
+                    # 只有长度大于 4 的才被认为是核心计算层 (排除一些小的 embedding list)
+                    if curr_len > 4: 
+                        if curr_len > max_len:
+                            max_len = curr_len
+                            best_container = module
+        except Exception:
+            pass
+            
         return best_container
 
 # --- 注册节点 ---
