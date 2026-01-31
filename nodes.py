@@ -386,8 +386,8 @@ class LaoLi_Lineup_Node:
             "required": {
                 "model": (any_type,),
                 "vram_threshold": ("FLOAT", {"default": 0.85, "min": 0.1, "max": 1.0, "step": 0.05}),
-                "cleaning_interval": ("INT", {"default": 2, "min": 1, "max": 20, "step": 1}),
-                "strict_mode": ("BOOLEAN", {"default": False}),
+                "cleaning_interval": ("INT", {"default": 1, "min": 1, "max": 20, "step": 1}),
+                "strict_mode": ("BOOLEAN", {"default": true}),
             }
         }
     RETURN_TYPES = (any_type,)
