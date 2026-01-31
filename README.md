@@ -28,6 +28,7 @@ ComfyUI-LaoLi-Shadow 是一个专为 ComfyUI 设计的底层性能优化插件�
 
 *   **参数详解：**
     *   `enable` (启用): 插件总开关。关闭后恢复 ComfyUI 原生行为。
+    *   `job_type` (生成类型): 建议无论生成图片还是视频，先保持默认，如果生成视频出现问题则改job_type为Video(Safe)。
     *   `shadow_mode` (影子模式): **核心功能**。
         *   `True`: 开启延迟加载。启动工作流时，硬盘读取和显存占用均为 0。
         *   `False`: 传统加载模式。
