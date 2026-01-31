@@ -12,7 +12,8 @@ ComfyUI-LaoLi-Shadow 是一个专为 ComfyUI 设计的底层性能优化插件�
 ---
 ## 🔗 连接图示
 3个节点可单独使用，按所需功能使用。
-<img width="2817" height="1166" alt="image" src="https://github.com/user-attachments/assets/9b781fc3-658f-4a36-838c-e55f5c4104ca" />
+
+<img width="2758" height="1160" alt="image" src="https://github.com/user-attachments/assets/f6ca8b37-5b07-4ce2-8bbf-a18d991db543" />
 
 
 
