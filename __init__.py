@@ -1,22 +1,24 @@
 import sys
-import subprocess
 import importlib
+import traceback
 
-def check_and_install(package_name):
+# 1. 依赖检查
+def check_dependency(package_name):
     try:
         importlib.import_module(package_name)
     except ImportError:
-        print(f"\033[33m[LaoLi Shadow] 正在自动安装依赖: {package_name} ...\033[0m")
-        try:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", package_name])
-            print(f"\033[32m[LaoLi Shadow] {package_name} 安装成功！\033[0m")
-        except Exception as e:
-            print(f"\033[31m[LaoLi Shadow] 自动安装失败: {e}\n请手动运行: pip install {package_name}\033[0m")
+        print(f"\033[33m⚠️ [LaoLi Shadow] 缺少依赖库: {package_name}，请手动安装: pip install {package_name}\033[0m")
 
-check_and_install("psutil")
+check_dependency("psutil")
 
-from .nodes import NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS
-
-__all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
-
-print("\033[34m[LaoLi Shadow] \033[0m影子系统已激活：ControlNet 0秒启动 | 智能显存共存")
+# 2. 尝试导入节点
+try:
+    from .nodes import NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS
+    __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
+    print("\033[34m[LaoLi Shadow] \033[0m影子系统已就绪")
+except Exception as e:
+    print(f"\033[31m❌ [LaoLi Shadow] 插件加载失败！错误详情如下：\033[0m")
+    traceback.print_exc()  # 打印完整的错误堆栈，这非常重要
+    NODE_CLASS_MAPPINGS = {}
+    NODE_DISPLAY_NAME_MAPPINGS = {}
+    __all__ = []
