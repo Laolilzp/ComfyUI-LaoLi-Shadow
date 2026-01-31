@@ -2,7 +2,7 @@
 
 **极速启动 · 智能显存管理 · 深度模型优化**
 
-ComfyUI-LaoLi-Shadow 是一个专为 ComfyUI 设计的底层性能优化插件。它通过“影子加载”技术实现工作流的秒级启动，并通过“显存排队”机制和模型动态卸载防止大模型采样时爆显存。
+ComfyUI-LaoLi-Shadow 是一个专为 ComfyUI 设计的底层性能优化插件。它通过“影子加载”技术实现工作流的快速启动，并通过“显存排队”机制和模型动态卸载防止大模型采样时爆显存。
 
 核心特性：
 - **全自动影子模式**：加载 Checkpoint/ControlNet 时不读硬盘、不占显存，只有在真正采样时才触发加载。
@@ -13,7 +13,8 @@ ComfyUI-LaoLi-Shadow 是一个专为 ComfyUI 设计的底层性能优化插件�
 ## 🔗 连接图示
 3个节点可单独使用，按所需功能使用。
 
-<img width="2758" height="1160" alt="image" src="https://github.com/user-attachments/assets/f6ca8b37-5b07-4ce2-8bbf-a18d991db543" />
+<img width="2807" height="1183" alt="image" src="https://github.com/user-attachments/assets/871b405a-5c23-41cc-b57a-e75f2f2ea4a8" />
+
 
 
 
@@ -29,7 +30,6 @@ ComfyUI-LaoLi-Shadow 是一个专为 ComfyUI 设计的底层性能优化插件�
 
 *   **参数详解：**
     *   `enable` (启用): 插件总开关。关闭后恢复 ComfyUI 原生行为。
-    *   `job_type` (生成类型): 建议无论生成图片还是视频，先保持默认，如果生成视频出现问题则改job_type为Video(Safe)。
     *   `shadow_mode` (影子模式): **核心功能**。
         *   `True`: 开启延迟加载。启动工作流时，硬盘读取和显存占用均为 0。
         *   `False`: 传统加载模式。
@@ -38,8 +38,6 @@ ComfyUI-LaoLi-Shadow 是一个专为 ComfyUI 设计的底层性能优化插件�
         *   `Monitor Mode` (监控模式): 仅监控显存，不主动执行卸载策略（不建议，不会显著降低显存，只会顺畅一些）。
     *   `ram_reserve_gb` (内存保留): **防卡死安全气囊**。
         *   当系统物理内存（RAM）剩余量低于此数值（例如 4.0GB）时，强制触发垃圾回收（GC），防止电脑因内存耗尽而死机。
-    *   `vram_reserve_mb` (显存保留): 强制划拨给 Windows 系统、浏览器或视频播放器的“专用显存”，严禁 ComfyUI 占用。让你在跑图的时候，还能流畅地看 B 站、刷网页或用 PS 修图。
-        *   512：默认值，保证电脑不卡死，鼠标能动。1024-2048：如果你喜欢边跑图边看高清视频，或者显存很大（24G），建议设高一点，体验更流畅。
     *   `verbose` (日志): 是否在控制台打印详细的运行日志（建议开启）。
 
 ---
